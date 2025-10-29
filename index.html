@@ -1,46 +1,80 @@
+  
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Live Temperature Dashboard</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f7fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2 {
       text-align: center;
-      background: #f4f6f8;
-      padding: 30px;
+      margin-bottom: 20px;
     }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
     canvas {
-      max-width: 800px;
-      margin: 20px auto;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      width: 100% !important;
+      height: 400px !important;
     }
-    h2 { color: #333; }
+
+    #lastMsg {
+      width: 100%;
+      max-width: 900px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 30px;
+    }
+
+    @media(max-width: 600px){
+      canvas { height: 300px !important; }
+      body { padding: 10px; }
+    }
   </style>
 </head>
 <body>
-  <h2>🌡️ Live Temperature (°C) vs Time</h2>
-  <canvas id="tempChart"></canvas>
-  <pre id="lastMsg" style="text-align:left; max-width:800px; margin:auto; background:#fff; padding:10px; border-radius:8px;"></pre>
+  <h2>🌡️ Live Temperature (°C) Dashboard</h2>
+  <div class="chart-container">
+    <canvas id="tempChart"></canvas>
+  </div>
+  <pre id="lastMsg">Waiting for messages...</pre>
 
   <script>
-    // --- HiveMQ WebSocket MQTT Connection ---
+ 
+     // --- HiveMQ WebSocket MQTT Connection ---
     const MQTT_BROKER = "wss://65ff6676b0a245a78b18f3779933e224.s1.eu.hivemq.cloud:8884/mqtt"; // <-- replace this
     const USERNAME = "james"; // <-- replace this    
     const PASSWORD = "Samronald@2702";
     const TOPIC = "sensor/data";
 
-    const options = {
-      username: USERNAME,
-      password: PASSWORD,
-      reconnectPeriod: 2000
-    };
-
-    const client = mqtt.connect(MQTT_BROKER, options);
+    const client = mqtt.connect(MQTT_BROKER, { username: USERNAME, password: PASSWORD });
 
     client.on("connect", () => {
       console.log("✅ Connected to HiveMQ WebSocket");
@@ -57,14 +91,22 @@
         label: "Temperature (°C)",
         data: [],
         borderColor: "rgb(255, 99, 132)",
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
         tension: 0.3,
-        fill: false
+        fill: true,
+        pointRadius: 4
       }]
     };
     const tempChart = new Chart(ctx, {
       type: "line",
       data: tempData,
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: { mode: 'index', intersect: false }
+        },
         scales: {
           x: { title: { display: true, text: "Time" } },
           y: { title: { display: true, text: "Temperature (°C)" }, suggestedMin: 0, suggestedMax: 50 }
@@ -80,7 +122,7 @@
         document.getElementById("lastMsg").innerText = JSON.stringify(data, null, 2);
 
         const createdAt = data.createdAt;
-        const temperature = parseFloat(data.sensors[0].p1[0]); // p1 is ["26.9", "Cel"]
+        const temperature = parseFloat(data.sensors[0].p1[0]);
 
         // Add data point
         tempData.labels.push(createdAt);
